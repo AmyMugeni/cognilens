@@ -1,0 +1,78 @@
+# ==============================
+# CogniLens - Project Gitignore
+# ==============================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ---------- Data ----------
+ml/data/raw/*
+ml/data/processed/*
+ml/data/synthetic/*
+*.csv
+*.parquet
+*.jsonl
+
+# Keep directory documentation
+!ml/data/raw/.gitkeep
+!ml/data/processed/.gitkeep
+!ml/data/synthetic/.gitkeep
+
+# ---------- ML model artifacts ----------
+ml/models/*
+*.pkl
+*.joblib
+*.onnx
+*.h5
+*.keras
+*.pt
+*.pth
+
+# Keep model documentation
+!ml/models/README.md
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+
+# ---------- Secrets ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Android / Gradle ----------
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+*.class
+
+# ---------- Android generated files ----------
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Logs ----------
+*.log
+
+# ---------- Temporary files ----------
+*.tmp
+*.temp
+*.bak
+
+# ---------- IDE ----------
+.vscode/
