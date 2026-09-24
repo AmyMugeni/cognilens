@@ -50,8 +50,22 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.activity:activity-compose:1.9.2")
+
+    // 2. Navigation Compose (Pin to 2.8.0 to prevent pulling unreleased navigationevent dependencies)
+    implementation("androidx.navigation:navigation-compose:2.8.0")
+
+    // 3. Jetpack Compose Bill of Materials (BOM)
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+
+    // 4. Desugaring & ONNX Runtime Dependencies
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
 
     // Room
     implementation(libs.androidx.room.runtime)
@@ -65,4 +79,13 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+configurations.all {
+    resolutionStrategy {
+        force("androidx.core:core:1.13.1")
+        force("androidx.core:core-ktx:1.13.1")
+        force("androidx.activity:activity:1.9.2")
+        force("androidx.activity:activity-ktx:1.9.2")
+        force("androidx.activity:activity-compose:1.9.2")
+    }
 }
