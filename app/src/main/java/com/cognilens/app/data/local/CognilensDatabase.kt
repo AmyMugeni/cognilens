@@ -4,23 +4,23 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.cognilens.app.data.dao.BehavioralSessionDao
-import com.cognilens.app.data.entity.BehavioralSession
+import com.cognilens.app.data.local.dao.InterventionLogDao
+import com.cognilens.app.data.local.entity.InterventionLogEntity
 
-@Database(entities = [BehavioralSession::class], version = 1, exportSchema = false)
-abstract class AppDatabase : RoomDatabase() {
+@Database(entities = [InterventionLogEntity::class], version = 1, exportSchema = false)
+abstract class CogniLensDatabase : RoomDatabase() {
 
-    abstract fun behavioralSessionDao(): BehavioralSessionDao
+    abstract fun interventionLogDao(): InterventionLogDao
 
     companion object {
         @Volatile
-        private var INSTANCE: AppDatabase? = null
+        private var INSTANCE: CogniLensDatabase? = null
 
-        fun getDatabase(context: Context): AppDatabase {
+        fun getDatabase(context: Context): CogniLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    AppDatabase::class.java,
+                    CogniLensDatabase::class.java,
                     "cognilens_database"
                 ).build()
                 INSTANCE = instance

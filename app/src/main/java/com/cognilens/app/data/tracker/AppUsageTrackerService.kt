@@ -11,13 +11,15 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.cognilens.app.data.local.CogniLensDatabase
+import com.cognilens.app.data.local.entity.InterventionLogEntity
+import com.cognilens.app.data.preferences.UserProfileRepository
 import com.cognilens.app.domain.model.UserProfile
 import com.cognilens.app.domain.rules.RuleEngine
 import com.cognilens.app.domain.rules.RuleEvaluationResult
 import com.cognilens.app.ml.models.ModelEvaluator
 import kotlinx.coroutines.*
 import java.time.LocalDateTime
-import java.time.LocalTime
 
 class AppUsageTrackerService : Service() {
 
@@ -25,11 +27,17 @@ class AppUsageTrackerService : Service() {
     private lateinit var usageStatsManager: UsageStatsManager
     private lateinit var ruleEngine: RuleEngine
     private lateinit var modelEvaluator: ModelEvaluator
+    private lateinit var userProfileRepository: UserProfileRepository
+    private lateinit var database: CogniLensDatabase
+
+    // Live baseline state held in memory and updated via DataStore Flow
+    private var cachedUserProfile = UserProfile()
 
     private var currentForegroundApp: String? = null
     private var sessionStartTime: Long = 0L
     private var lastClosedTime: Long = 0L
 
+    // Default target social media apps to monitor
     private val monitoredApps = setOf(
         "com.instagram.android",
         "com.zhiliaoapp.musically", // TikTok
@@ -42,6 +50,15 @@ class AppUsageTrackerService : Service() {
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         ruleEngine = RuleEngine()
         modelEvaluator = ModelEvaluator(applicationContext)
+        userProfileRepository = UserProfileRepository(applicationContext)
+        database = CogniLensDatabase.getDatabase(applicationContext)
+
+        // Observe DataStore updates in real time to update the local memory cache
+        serviceScope.launch {
+            userProfileRepository.userProfileFlow.collect { profile ->
+                cachedUserProfile = profile
+            }
+        }
 
         startForeground(NOTIFICATION_ID, createNotification())
         startPollingLoop()
@@ -81,7 +98,6 @@ class AppUsageTrackerService : Service() {
                     }
 
                     sessionStartTime = now
-                    // FIX: Fully explicitly named arguments to prevent mixing positional/named errors
                     evaluateRealtimeSession(
                         packageName = packageName,
                         durationMins = 0f,
@@ -92,7 +108,8 @@ class AppUsageTrackerService : Service() {
 
             // Detect App Close / Backgrounding
             if (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
-                event.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
+                event.eventType == UsageEvents.Event.ACTIVITY_STOPPED
+            ) {
                 if (event.packageName == currentForegroundApp) {
                     currentForegroundApp = null
                     lastClosedTime = System.currentTimeMillis()
@@ -123,40 +140,62 @@ class AppUsageTrackerService : Service() {
         reopenIntervalMins: Float
     ) {
         val currentTime = LocalDateTime.now()
+        val userProfile = cachedUserProfile // Live UserProfile from DataStore
 
-        // Placeholder profile until database repository is wired
-        val userProfile = UserProfile(
-            wakeUpTime = LocalTime.of(7, 0),
-            sleepTime = LocalTime.of(23, 0),
-            bsmasScore = 22
-        )
-
-        // 1. HARD RULE CHECK (Circadian Override)
+        // 1. HARD RULE CHECK (Zero-latency O(1) Circadian & Safety Net Guardrail)
         when (val ruleResult = ruleEngine.evaluate(userProfile, currentTime, durationMins, reopenIntervalMins)) {
             is RuleEvaluationResult.TriggerIntervention -> {
-                triggerInterventionOverlay(packageName, reason = ruleResult.reason)
+                triggerAndLogIntervention(
+                    packageName = packageName,
+                    reason = ruleResult.reason,
+                    durationMins = durationMins,
+                    reopenIntervalMins = reopenIntervalMins
+                )
                 return
             }
+
             is RuleEvaluationResult.PassToML -> {
-                // 2. GRADIENT BOOSTING ML EVALUATION
-                val scheduleConflictFeature = ruleEngine.isScheduleConflict(userProfile, currentTime)
+                // 2. GRADIENT BOOSTING ML EVALUATION (Sub-millisecond Local ONNX Inference)
+                val scheduleConflict = ruleEngine.isScheduleConflict(userProfile, currentTime)
 
                 val isCompulsive = modelEvaluator.evaluateSession(
                     sessionDurationMins = durationMins,
                     reopenIntervalMins = reopenIntervalMins,
                     bsmasScore = userProfile.bsmasScore.toFloat(),
-                    isScheduleConflict = scheduleConflictFeature
+                    isScheduleConflict = scheduleConflict
                 )
 
                 if (isCompulsive) {
-                    triggerInterventionOverlay(packageName, reason = "ML Model: Compulsive pattern detected.")
+                    triggerAndLogIntervention(
+                        packageName = packageName,
+                        reason = "ML Model: Compulsive pattern detected.",
+                        durationMins = durationMins,
+                        reopenIntervalMins = reopenIntervalMins
+                    )
                 }
             }
         }
     }
 
-    private fun triggerInterventionOverlay(packageName: String, reason: String) {
-        println("🚨 INTERVENTION TRIGGERED for $packageName. Reason: $reason")
+    private fun triggerAndLogIntervention(
+        packageName: String,
+        reason: String,
+        durationMins: Float,
+        reopenIntervalMins: Float
+    ) {
+        println(" INTERVENTION TRIGGERED for $packageName. Reason: $reason")
+
+        // Log intervention event to local Room Database
+        serviceScope.launch {
+            database.interventionLogDao().insertLog(
+                InterventionLogEntity(
+                    packageName = packageName,
+                    triggerReason = reason,
+                    sessionDurationMins = durationMins,
+                    reopenIntervalMins = reopenIntervalMins
+                )
+            )
+        }
     }
 
     private fun createNotification(): Notification {
@@ -166,7 +205,11 @@ class AppUsageTrackerService : Service() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(
+                channelId,
+                channelName,
+                NotificationManager.IMPORTANCE_LOW
+            )
             manager.createNotificationChannel(channel)
         }
 

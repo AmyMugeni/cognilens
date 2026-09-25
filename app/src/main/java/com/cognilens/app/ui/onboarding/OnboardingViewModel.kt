@@ -1,18 +1,23 @@
 package com.cognilens.app.ui.onboarding
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.cognilens.app.data.preferences.UserProfileRepository
 import com.cognilens.app.domain.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 
-class OnboardingViewModel : ViewModel() {
+class OnboardingViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = UserProfileRepository(application)
 
     private val _userProfile = MutableStateFlow(UserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
-    // BSMAS Answers (6 questions, default score 3 per item)
     private val _bsmasAnswers = MutableStateFlow(IntArray(6) { 3 })
     val bsmasAnswers: StateFlow<IntArray> = _bsmasAnswers.asStateFlow()
 
@@ -28,9 +33,14 @@ class OnboardingViewModel : ViewModel() {
         val current = _bsmasAnswers.value.copyOf()
         current[index] = score
         _bsmasAnswers.value = current
+        _userProfile.value = _userProfile.value.copy(bsmasScore = current.sum())
+    }
 
-        // Recalculate total BSMAS score (6 to 30)
-        val totalScore = current.sum()
-        _userProfile.value = _userProfile.value.copy(bsmasScore = totalScore)
+    /** Saves baseline profile permanently to Preferences DataStore. */
+    fun completeOnboarding(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            repository.saveUserProfile(_userProfile.value)
+            onSuccess()
+        }
     }
 }

@@ -1,11 +1,11 @@
-package com.cognilens.app.data.dao
+package com.cognilens.app.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.cognilens.app.data.entity.BehavioralSession
+import com.cognilens.app.data.local.entity.BehavioralSession
 import kotlinx.coroutines.flow.Flow
 
 @Dao

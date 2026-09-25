@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation("androidx.core:core-ktx:1.13.1")
+    // 1. Preferences DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.activity:activity-compose:1.9.2")
 
     // 2. Navigation Compose (Pin to 2.8.0 to prevent pulling unreleased navigationevent dependencies)
@@ -65,11 +67,12 @@ dependencies {
 
     // 4. Desugaring & ONNX Runtime Dependencies
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.0")
 
     // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)

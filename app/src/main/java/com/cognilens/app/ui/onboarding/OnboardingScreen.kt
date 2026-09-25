@@ -85,7 +85,11 @@ fun OnboardingScreen(
                             Text("Next")
                         }
                     } else {
-                        Button(onClick = onOnboardingComplete) {
+                        Button(onClick = {
+                            viewModel.completeOnboarding {
+                                onOnboardingComplete()
+                            }
+                        }) {
                             Text("Finish")
                         }
                     }
@@ -148,7 +152,7 @@ fun WelcomeStep() {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "🔒 100% On-Device & Private",
+                    text = "100% On-Device & Private",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyLarge
                 )

@@ -8,49 +8,51 @@ import java.nio.FloatBuffer
 
 class ModelEvaluator(private val context: Context) {
 
-    private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val session: OrtSession
+    private var env: OrtEnvironment? = null
+    private var session: OrtSession? = null
 
     init {
-        // Load ONNX model directly from assets folder
-        val modelBytes = context.assets.open("cognilens_gb_model.onnx").readBytes()
-        session = env.createSession(modelBytes)
+        try {
+            env = OrtEnvironment.getEnvironment()
+            val modelBytes = context.assets.open("cognilens_gb_model.onnx").use { it.readBytes() }
+            session = env?.createSession(modelBytes)
+            println(" ModelEvaluator: ONNX model loaded successfully.")
+        } catch (t: Throwable) {
+            // Catches OrtException, UnsupportedModelVersion, and Native library load errors
+            println("⚠ ModelEvaluator: Failed to load ONNX model (${t.message}). Falling back to RuleEngine.")
+            env = null
+            session = null
+        }
     }
 
-    /**
-     * Predicts whether a session is Compulsive (true) or Intentional (false).
-     *
-     * @param sessionDurationMins Continuous minutes in active foreground.
-     * @param reopenIntervalMins Minutes since app was last closed.
-     * @param bsmasScore User's baseline BSMAS survey score (6-30).
-     * @param isScheduleConflict 1.0 if during user's work/study schedule, else 0.0.
-     */
     fun evaluateSession(
         sessionDurationMins: Float,
         reopenIntervalMins: Float,
         bsmasScore: Float,
         isScheduleConflict: Float
     ): Boolean {
-        val inputData = floatArrayOf(
-            sessionDurationMins,
-            reopenIntervalMins,
-            bsmasScore,
-            isScheduleConflict
-        )
+        val ortSession = session ?: return false
+        val ortEnv = env ?: return false
 
-        // Shape: 1 row, 4 features
-        val inputTensor = OnnxTensor.createTensor(
-            env,
-            FloatBuffer.wrap(inputData),
-            longArrayOf(1, 4)
-        )
+        return try {
+            val inputData = floatArrayOf(
+                sessionDurationMins,
+                reopenIntervalMins,
+                bsmasScore,
+                isScheduleConflict
+            )
 
-        val outputs = session.run(mapOf("float_input" to inputTensor))
+            val shape = longArrayOf(1, 4)
+            val tensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
 
-        // Retrieve predictions (class 1 = Compulsive, class 0 = Intentional)
-        val resultTensor = outputs[0].value as LongArray
-        val predictedClass = resultTensor[0]
-
-        return predictedClass == 1L
+            tensor.use {
+                val results = ortSession.run(mapOf("float_input" to tensor))
+                val outputTensor = results[0].value as Array<LongArray>
+                outputTensor[0][0] == 1L
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 }
