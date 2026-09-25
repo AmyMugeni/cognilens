@@ -23,6 +23,15 @@ CogniLens is designed to:
 
 The system is intended as a digital wellbeing research prototype and does not diagnose addiction or mental health conditions.
 
+## Project Structure & Architecture
+
+CogniLens is organized as a modern Android Jetpack Compose application leveraging local on-device machine learning and advanced capabilities:
+
+- **`ui`**: Fully built using Jetpack Compose, featuring an adaptive design including structured flows like onboarding screens (`OnboardingScreen`).
+- **`ml`**: Custom machine learning pipeline tailored for real-time classification of compulsive patterns using structured user traits.
+- **`rag`**: Retrieval-Augmented Generation components supporting interactive, contextual, and educational digital wellbeing assistance.
+- **`data` & `domain`**: Structured clean architecture using Kotlin, Room database for local persistence, and Android system-level APIs for context tracking.
+
 ## Research Methodology
 
 The project follows an experimental research approach for evaluating behavioural classification and intervention effectiveness.
@@ -46,12 +55,27 @@ F1-Score will serve as the primary metric because it balances precision and reca
 
 ## Repository Structure
 
-`	ext
+```text
 cognilens/
-+-- android/        # Android application
-+-- ml/             # Machine learning pipeline
-+-- rag/            # Retrieval-Augmented Generation components
-+-- docs/           # Architecture and research documentation
-+-- .gitignore
-+-- README.md
-+-- LICENSE
+├── app/
+│   └── src/
+│       └── main/
+│           └── java/com/cognilens/app/
+│               ├── data/         # Data layer & Local persistence (Room)
+│               ├── domain/       # Core business rules & Use cases
+│               ├── ml/           # Machine learning pipeline
+│               ├── rag/          # Retrieval-Augmented Generation components
+│               └── ui/           # Jetpack Compose UI & Onboarding screen
+├── docs/                         # Architecture and research documentation
+├── build.gradle.kts
+├── settings.gradle.kts
+└── README.md
+```
+
+## Setup & Technical Requirements
+
+- **Android Studio**: Ladybug (2024.2.1) or higher recommended
+- **Compile SDK**: 36
+- **Minimum SDK**: 24
+- **Language**: Kotlin 2.0.x with Kotlin DSL and Jetpack Compose compiler plugin
+- **Local Database**: Android Room with KSP (Kotlin Symbol Processing)
