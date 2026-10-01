@@ -21,19 +21,47 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     private val _bsmasAnswers = MutableStateFlow(IntArray(6) { 3 })
     val bsmasAnswers: StateFlow<IntArray> = _bsmasAnswers.asStateFlow()
 
+    private val _isBsmasCompleted = MutableStateFlow(false)
+    val isBsmasCompleted: StateFlow<Boolean> = _isBsmasCompleted.asStateFlow()
+
+    fun updateUsername(name: String) {
+        _userProfile.value = _userProfile.value.copy(username = name)
+    }
+
     fun updateWakeUpTime(time: LocalTime) {
-        _userProfile.value = _userProfile.value.copy(wakeUpTime = time)
+        _userProfile.value = _userProfile.value.copy(
+            wakeUpTime = time,
+            isSleepConfigured = true
+        )
     }
 
     fun updateSleepTime(time: LocalTime) {
-        _userProfile.value = _userProfile.value.copy(sleepTime = time)
+        _userProfile.value = _userProfile.value.copy(
+            sleepTime = time,
+            isSleepConfigured = true
+        )
+    }
+
+    fun updateTimetableStatus(isConfigured: Boolean) {
+        _userProfile.value = _userProfile.value.copy(isTimetableConfigured = isConfigured)
     }
 
     fun updateBsmasAnswer(index: Int, score: Int) {
         val current = _bsmasAnswers.value.copyOf()
         current[index] = score
         _bsmasAnswers.value = current
+        _isBsmasCompleted.value = true
         _userProfile.value = _userProfile.value.copy(bsmasScore = current.sum())
+    }
+
+    fun calculateCompletionPercentage(): Float {
+        val profile = _userProfile.value
+        var completed = 0
+        if (profile.username.trim().length >= 3) completed++
+        if (profile.isSleepConfigured) completed++
+        if (profile.isTimetableConfigured) completed++
+        if (_isBsmasCompleted.value) completed++
+        return completed / 4.0f
     }
 
     /** Saves baseline profile permanently to Preferences DataStore. */
